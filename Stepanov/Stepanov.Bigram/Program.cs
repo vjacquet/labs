@@ -45,18 +45,6 @@ namespace Stepanov.Bigram
         }
     }
 
-    public class RankComparer<T> : IComparer<Tuple<int, T>>
-    {
-
-        #region IComparer<Tuple<int,T>> Membres
-
-        int IComparer<Tuple<int, T>>.Compare(Tuple<int, T> x, Tuple<int, T> y) {
-            return x.Item1 - y.Item1;
-        }
-
-        #endregion
-    }
-
     [DebuggerDisplay("First={First}, Second={Second}")]
     public struct Bigram : IComparable<Bigram>, IEquatable<Bigram>
     {
@@ -130,7 +118,6 @@ namespace Stepanov.Bigram
 
     public static partial class EnumerableExtensions
     {
-
         public static IEnumerable<Tuple<int, T>> RunLengthEncoding<T>(this IEnumerable<T> self) where T : IEquatable<T> {
             var enumerator = self.GetEnumerator();
             if (enumerator.MoveNext()) {
@@ -148,6 +135,5 @@ namespace Stepanov.Bigram
                 yield return Tuple.Create(count, current);
             }
         }
-
     }
 }
