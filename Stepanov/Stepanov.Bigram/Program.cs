@@ -22,24 +22,39 @@ namespace Stepanov.Bigram
                 Environment.Exit(1);
             }
 
+            var filename = args[0];
             var stopwatch = Stopwatch.StartNew();
-            using (var stream = File.OpenRead(args[0]))
+
+            using (var stream = File.OpenRead(filename))
             using (var reader = new StreamReader(stream)) {
                 // the average word length in english is 5
-                int capacity = checked((int)(new FileInfo(args[0]).Length / 5));
-                var bigrams = new List<Bigram>(capacity); 
+                int capacity = checked((int)(new FileInfo(filename).Length / 5));
+                var bigrams = new List<Bigram>(capacity);
                 bigrams.AddRange(reader.ReadWords().AsBigrams());
                 bigrams.Sort();
 
                 var bigramCounts = bigrams.RunLengthEncoding()
-                    .OrderByDescending(i => i.Item1);
+                    .OrderByDescending(b => b.Item1);
 
                 foreach (var result in bigramCounts.Take(250)) {
                     Console.Out.WriteLine("{0} {1} {2}", result.Item2.First, result.Item2.Second, result.Item1);
                 }
             }
+
             Console.Out.WriteLine("Ran in {0}ms.", stopwatch.ElapsedMilliseconds);
         }
+    }
+
+    public class RankComparer<T> : IComparer<Tuple<int, T>>
+    {
+
+        #region IComparer<Tuple<int,T>> Membres
+
+        int IComparer<Tuple<int, T>>.Compare(Tuple<int, T> x, Tuple<int, T> y) {
+            return x.Item1 - y.Item1;
+        }
+
+        #endregion
     }
 
     [DebuggerDisplay("First={First}, Second={Second}")]
@@ -59,10 +74,12 @@ namespace Stepanov.Bigram
         #region IComparable<Bigram> Membres
 
         public int CompareTo(Bigram other) {
-            var cmp = String.Compare(_first, other._first);
-            if (cmp == 0)
+            if (Object.ReferenceEquals(_first, other._first)) {
+                if (Object.ReferenceEquals(_second, other._second))
+                    return 0;
                 return String.Compare(_second, other._second);
-            return cmp;
+            }
+            return String.Compare(_first, other._first);
         }
 
         #endregion
@@ -96,7 +113,7 @@ namespace Stepanov.Bigram
         }
     }
 
-    public static class TextReaderExtensions
+    public static partial class TextReaderExtensions
     {
         private readonly static char[] spaces = { ' ', '\r', '\t', '\n' };
 
@@ -111,8 +128,9 @@ namespace Stepanov.Bigram
         }
     }
 
-    public static class EnumerableExtensions
+    public static partial class EnumerableExtensions
     {
+
         public static IEnumerable<Tuple<int, T>> RunLengthEncoding<T>(this IEnumerable<T> self) where T : IEquatable<T> {
             var enumerator = self.GetEnumerator();
             if (enumerator.MoveNext()) {
@@ -130,5 +148,6 @@ namespace Stepanov.Bigram
                 yield return Tuple.Create(count, current);
             }
         }
+
     }
 }
