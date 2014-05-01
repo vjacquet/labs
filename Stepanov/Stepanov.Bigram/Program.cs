@@ -25,12 +25,14 @@ namespace Stepanov.Bigram
             var stopwatch = Stopwatch.StartNew();
             using (var stream = File.OpenRead(args[0]))
             using (var reader = new StreamReader(stream)) {
-                var bigrams = new List<Bigram>(reader.ReadWords().AsBigrams());
+                // the average word length in english is 5
+                int capacity = checked((int)(new FileInfo(args[0]).Length / 5));
+                var bigrams = new List<Bigram>(capacity); 
+                bigrams.AddRange(reader.ReadWords().AsBigrams());
                 bigrams.Sort();
 
                 var bigramCounts = bigrams.RunLengthEncoding()
-                    .OrderByDescending(i => i.Item1)
-                    .ThenBy(i => i.Item2);
+                    .OrderByDescending(i => i.Item1);
 
                 foreach (var result in bigramCounts.Take(250)) {
                     Console.Out.WriteLine("{0} {1} {2}", result.Item2.First, result.Item2.Second, result.Item1);
@@ -68,7 +70,8 @@ namespace Stepanov.Bigram
         #region IEquatable<Bigram> Membres
 
         bool IEquatable<Bigram>.Equals(Bigram other) {
-            return CompareTo(other) == 0;
+            return Object.ReferenceEquals(_first, other._first)
+                && Object.ReferenceEquals(_second, other._second);
         }
 
         #endregion
@@ -77,12 +80,15 @@ namespace Stepanov.Bigram
     public static class BusinessExtensions
     {
         public static IEnumerable<Bigram> AsBigrams(this IEnumerable<string> words) {
+            var nt = new NameTable();
             string previous;
-            var enumerator = words.GetEnumerator();
+            var enumerator = words.Where(w => w[0] != '|')
+                .Select(w => w.TrimEnd(',', '.', ';', '?', '!', ':').ToLowerInvariant())
+                .GetEnumerator();
             if (enumerator.MoveNext()) {
-                previous = enumerator.Current;
+                previous = nt.Add(enumerator.Current);
                 while (enumerator.MoveNext()) {
-                    string current = enumerator.Current;
+                    string current = nt.Add(enumerator.Current);
                     yield return new Bigram(previous, current);
                     previous = current;
                 }
