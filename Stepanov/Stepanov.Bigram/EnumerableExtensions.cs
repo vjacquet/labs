@@ -50,5 +50,54 @@ namespace Stepanov.Bigram
                 }
             }
         }
+
+        public static IEnumerable<T> CombineWith<T>(this IEnumerable<T> self, IEnumerable<T> other, IComparer<T> comparer, Func<T, T, T> combiner) {
+            var enumerator1 = self.GetEnumerator();
+            var hasValue1 = enumerator1.MoveNext();
+            var enumerator2 = other.GetEnumerator();
+            var hasValue2 = enumerator2.MoveNext();
+
+            if (!hasValue1) {
+                while (hasValue2) {
+                    yield return enumerator2.Current;
+                    hasValue2 = enumerator2.MoveNext();
+                }
+                yield break;
+            }
+            if (!hasValue2) {
+                while (hasValue1) {
+                    yield return enumerator1.Current;
+                    hasValue1 = enumerator1.MoveNext();
+                }
+                yield break;
+            }
+            while (true) {
+                int comparison =comparer.Compare(enumerator2.Current, enumerator1.Current);
+                if (comparison < 0) {
+                    yield return enumerator2.Current;
+                    hasValue2 = enumerator2.MoveNext();
+                    if (!hasValue2) {
+                        do {
+                            yield return enumerator1.Current;
+                        } while (enumerator1.MoveNext());
+                        yield break;
+                    }
+                } else if(comparison > 0){
+                    yield return enumerator1.Current;
+                    hasValue1 = enumerator1.MoveNext();
+                    if (!hasValue1) {
+                        do {
+                            yield return enumerator2.Current;
+                        } while (enumerator2.MoveNext());
+                        yield break;
+                    }
+                } else {
+                    yield return combiner(enumerator1.Current, enumerator2.Current);
+                    hasValue1 = enumerator1.MoveNext();
+                    hasValue2 = enumerator2.MoveNext();
+                }
+            }
+        }
+
     }
 }

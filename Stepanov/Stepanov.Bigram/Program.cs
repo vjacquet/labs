@@ -31,9 +31,18 @@ namespace Stepanov.Bigram
                 int capacity = checked((int)(new FileInfo(filename).Length / 5));
                 var bigrams = new List<Bigram>(capacity);
                 bigrams.AddRange(reader.ReadWords().AsBigrams());
-                bigrams.Sort();
 
-                var bigramCounts = bigrams.RunLengthEncoding()
+                var count = bigrams.Count;
+                var mid = count / 2;
+                Parallel.Invoke(
+                    () => bigrams.Sort(0, mid, Comparer<Bigram>.Default),
+                    () => bigrams.Sort(mid, count - mid, Comparer<Bigram>.Default)
+                );
+
+                var bigramCounts = bigrams.Take(mid).RunLengthEncode()
+                    .CombineWith(bigrams.Skip(mid).RunLengthEncode()
+                    , Comparer<Tuple<int, Bigram>>.Create((x, y) => Comparer<Bigram>.Default.Compare(x.Item2, y.Item2))
+                    , (x, y) => Tuple.Create(x.Item1 + y.Item1, x.Item2))
                     .OrderByDescending(b => b.Item1);
 
                 foreach (var result in bigramCounts.Take(250)) {
@@ -118,7 +127,7 @@ namespace Stepanov.Bigram
 
     public static partial class EnumerableExtensions
     {
-        public static IEnumerable<Tuple<int, T>> RunLengthEncoding<T>(this IEnumerable<T> self) where T : IEquatable<T> {
+        public static IEnumerable<Tuple<int, T>> RunLengthEncode<T>(this IEnumerable<T> self) where T : IEquatable<T> {
             var enumerator = self.GetEnumerator();
             if (enumerator.MoveNext()) {
                 int count = 1;
